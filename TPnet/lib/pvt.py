@@ -14,26 +14,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def TPmodule(sample, images):
-    # 第一个参数ft为深度神经网络提取的特征，第二个参数为图像本身（深度图像还是图像本身？）
     r, dim, h, w = sample.shape  # 存储处理后的子张量
     processed_samples = []
-
-    # 遍历每个样本，对每个 (1, 512, 14, 14) 子张量进行操作
-    for i in range(sample.size(0)):  # 批次维度 size(0) 是 8
-        ft = sample[i:i + 1]  # 获取一个 (1, 512, 14, 14) 的子张量
+    for i in range(sample.size(0)):
+        ft = sample[i:i + 1]  
         ft = ft.squeeze().permute(1, 2, 0).detach().cpu().numpy()
         image = images[i:i + 1]
-        image = image.squeeze().permute(1, 2, 0).cpu().numpy()  # 从 [1, 3, 352, 352] 变为 [352, 352, 3]，以适应opencv的处理
-        # 显示图像
-        # plt.imshow(image)
-        # plt.axis('off')  # 关闭坐标轴
-        # plt.show()
+        image = image.squeeze().permute(1, 2, 0).cpu().numpy()
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         I1 = cv2.resize(image_rgb, (w, h))
         I2 = color.rgb2hsv(I1)
-        # plt.imshow(image)
-        # plt.axis('off')  # 关闭坐标轴
-        # plt.show()
         V = I2[:, :, 2]  # 获取 Value 组件
         # 使用Gabor滤波器的各个方向
         ang = [0, 20, 40, 60, 80, 100, 120, 140, 160]
@@ -42,50 +32,21 @@ def TPmodule(sample, images):
         for angle in ang:
             filt_real, filt_imag = gabor(V, frequency=2.0, theta=np.deg2rad(angle))
             gabor_responses.append(np.sqrt(filt_real ** 2 + filt_imag ** 2))
-        # 将结果转换为三维数组
         gabortmp = np.array(gabor_responses)
-        # 在第一维和第二维进行求和
         E = np.sum(gabortmp, axis=(1, 2))
-        # 将卷积特征调整为9x9的尺寸
         rft = cv2.resize(ft, (9, 9))
-        # 对每列进行求和，得到9xdim的矩阵，再进行转置
         sft = np.sum(rft, axis=0)
         sft = np.reshape(sft, (9, dim))
         sft = sft.T
-        # 计算纹理特征与卷积特征之间的欧几里得距离
         dist = cdist(E.reshape(1, -1), sft, metric='euclidean')
-        # 对距离进行升序排序，返回升序排列的索引
         index = np.argsort(dist.flatten())
-        # 选择最小距离前10的通道索引，即前10个最匹配的特征通道
         m = 10
         mo = index[:m]
         ms = np.zeros((h, w))
-        # 全局拓扑特征图
         for k in range(0, m):
             ms = ms + ft[:, :, mo[k]]
-        # ms = cv2.resize(ms, (448, 448))
-        # # 创建一个 1x2 的子图布局
-        # fig, axes = plt.subplots(1, 2, figsize=(12, 6))  # 1 行 2 列
-        # # 在第一个子图中显示第一张图片
-        # axes[0].imshow(image)
-        # axes[0].axis('off')  # 关闭坐标轴
-        # axes[0].set_title("Image 1")  # 添加标题
-        #
-        # # 在第二个子图中显示第二张图片
-        # axes[1].imshow(ms)
-        # axes[1].axis('off')  # 关闭坐标轴
-        # axes[1].set_title("Image 2")  # 添加标题
-        #
-        # # 调整布局，使子图之间不会重叠
-        # plt.tight_layout()
-        #
-        # # 显示图片
-        # plt.show()
-        # 将hxw大小的图像转换为Tensor(1,1,h,w)
         ms = torch.tensor(ms).float().unsqueeze(0).unsqueeze(0).cuda()
-        # 保存每个图像生成的拓扑图
         processed_samples.append(ms)
-    # 将图像拼接回原样
     x_processed = torch.cat(processed_samples, dim=0)
 
     return x_processed
@@ -410,117 +371,6 @@ class TPnet(nn.Module):
 
         return stage_loss, prediction2_8, interm_fuse
         # return stage_loss, prediction2_8
-
-
-class Hitnet(nn.Module):
-    def __init__(self, channel=32, n_feat=32, scale_unetfeats=32, kernel_size=3, reduction=4, bias=False,
-                 act=nn.PReLU()):
-        super(Hitnet, self).__init__()
-
-        self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
-        path = 'D:/PycharmProject/HitNet-main/pretrained_pvt/pvt_v2_b2.pth'
-        # path = '/app/HitNet-main/pretrained_pvt/pvt_v2_b2.pth'
-        save_model = torch.load(path)
-        model_dict = self.backbone.state_dict()
-        state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
-        model_dict.update(state_dict)
-        self.backbone.load_state_dict(model_dict)
-
-        self.Translayer2_0 = BasicConv2d(64, channel, 1)
-        self.Translayer2_1 = BasicConv2d(128, channel, 1)
-        self.Translayer3_1 = BasicConv2d(320, channel, 1)
-        self.Translayer4_1 = BasicConv2d(512, channel, 1)
-
-        self.ca = ChannelAttention(64)
-        self.sa = SpatialAttention()
-        self.SAM = SAM()
-
-        self.down05 = nn.Upsample(scale_factor=0.5, mode='bilinear', align_corners=True)
-        self.out_SAM = nn.Conv2d(channel, 1, 1)
-        self.out_CFM = nn.Conv2d(channel, 1, 1)
-
-        self.decoder_level4 = [CAB(n_feat, kernel_size, reduction, bias=bias, act=act) for _ in range(2)]
-
-        self.decoder_level3 = [CAB(n_feat + scale_unetfeats, kernel_size, reduction, bias=bias, act=act) for _ in
-                               range(2)]
-
-        self.decoder_level2 = [CAB(n_feat + (scale_unetfeats * 2), kernel_size, reduction, bias=bias, act=act) for _ in
-                               range(2)]
-
-        self.decoder_level4 = nn.Sequential(*self.decoder_level4)
-
-        self.decoder_level3 = nn.Sequential(*self.decoder_level3)
-
-        self.decoder_level2 = nn.Sequential(*self.decoder_level2)
-
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-
-        self.downsample_4 = nn.Upsample(scale_factor=0.25, mode='bilinear', align_corners=True)
-
-        self.upsample_4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
-
-        self.conv4 = BasicConv2d(3 * channel, channel, 3, padding=1)
-
-        self.decoder_level1 = [CAB(64, kernel_size, reduction, bias=bias, act=act) for _ in range(2)]
-
-        self.decoder_level1 = nn.Sequential(*self.decoder_level1)
-
-        self.compress_out = BasicConv2d(2 * channel, channel, kernel_size=8, stride=4, padding=2)
-
-        self.compress_out2 = BasicConv2d(2 * channel, channel, kernel_size=1)
-        ##kernel_size, stride=1, padding=0, dilation=1
-
-    def forward(self, x):
-        h, w = x.shape[-2:]
-
-        # backbone
-        pvt = self.backbone(x)
-        x1 = pvt[0]
-        x2 = pvt[1]
-        x3 = pvt[2]
-        x4 = pvt[3]
-
-        #############-------------------------------------------------
-        # CIM 处理浅层次特征
-        cim_feature = self.decoder_level1(x1)
-        # CFM  多次迭代融合深层次特征
-        x2_t = self.Translayer2_1(x2)  #####channel=32
-        x3_t = self.Translayer3_1(x3)  ####channel=32
-        x4_t = self.Translayer4_1(x4)
-
-        ####stage 1--------------------------------------------------
-        stage_loss = list()
-        cfm_feature = None
-        for iter in range(4):
-            if cfm_feature is None:
-                x4_t = x4_t
-            else:
-                x4_t = torch.cat((self.upsample_4(x4_t), cfm_feature), 1)
-                x4_t = self.compress_out(x4_t)
-            x4_t_feed = self.decoder_level4(x4_t)  ######channel=32, width and height
-            x3_t_feed = torch.cat((x3_t, self.upsample(x4_t_feed)), 1)
-            x3_t_feed = self.decoder_level3(x3_t_feed)
-            if iter > 0:
-                x2_t = torch.cat((x2_t, cfm_feature), 1)
-                x2_t = self.compress_out2(x2_t)
-            x2_t_feed = torch.cat((x2_t, self.upsample(x3_t_feed)), 1)
-            x2_t_feed = self.decoder_level2(x2_t_feed)  ####(3 channel, 3channel)
-            cfm_feature = self.conv4(x2_t_feed)
-            prediction1 = self.out_CFM(cfm_feature)
-            prediction1_8 = F.interpolate(prediction1, scale_factor=8, mode='bilinear')
-            stage_loss.append(prediction1_8)
-        ###-----------------------
-        # SAM 结合CIM和CFM提升空间细节，整合语义和细节信息
-        T2 = self.Translayer2_0(cim_feature)
-        T2 = self.down05(T2)
-        sam_feature = self.SAM(cfm_feature, T2)
-
-        # prediction1 = self.out_CFM(cfm_feature )
-        prediction2 = self.out_SAM(sam_feature)
-        prediction2_8 = F.interpolate(prediction2, scale_factor=8, mode='bilinear')
-
-        return stage_loss, prediction2_8
-
 
 if __name__ == '__main__':
     model = TPnet().cuda()
