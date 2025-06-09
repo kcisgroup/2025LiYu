@@ -821,7 +821,6 @@ class DPTDepthModule(DPT):
             self.load(path)
 
     def forward(self, x):
-        # 去除维度故返回值为(1,160,160)
         # inv_depth = super().forward(x).squeeze(dim=1)
         inv_depth = super().forward(x)
         if self.invert:
@@ -835,38 +834,7 @@ class DPTDepthModule(DPT):
 
 if __name__ == '__main__':
     model = DPTDepthModule()
-    # 提取网络参数
-    # model_dict = torch.load('./weights/dpt_large.pt')
-    # state_dict = model_dict
-    # print(state_dict)
-    # # 加载参数
-    # model.load_state_dict(state_dict)
-    # yolo模型输入为三通道
     input = torch.ones((1, 3, 480, 640))
     print(model)
-    # 保存模型到文件
-    # torch.save(model.state_dict(), "dpt_depth_module.pth")
-    # netron.start('dpt_depth_module.pth')
-
-    # 创建 Graphviz 图对象
-    # dot = Digraph(format='png')
-    # dot.attr(rankdir='LR')  # 从左到右绘制
-    #
-    # # 添加节点
-    # dot.node('A', 'Input Image')
-    # dot.node('B', 'Patch Embedding\n(Conv2d)')
-    # dot.node('C', 'Position Embedding\n(LayerNorm)')
-    # dot.node('D', 'Transformer Encoder Layer\n(Attention + MLP)')
-    # dot.node('E', 'Transformer Encoder Layer\n(Attention + MLP)')
-    # dot.node('F', 'Transformer Encoder Layer\n(Attention + MLP)')
-    # dot.node('G', 'Transformer Encoder Layer\n(Attention + MLP)')
-    # dot.node('H', 'Output Projection\n(MLP Head)')
-    #
-    # # 添加边
-    # dot.edges(['AB', 'BC', 'CD', 'DE', 'EF', 'FG', 'GH'])
-    #
-    # # 渲染并显示图表
-    # dot.render('dpt_depth_module_structure', view=True)
-    #
     output = model(input)
     print(output.shape)
