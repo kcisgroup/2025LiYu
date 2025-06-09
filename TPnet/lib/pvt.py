@@ -233,8 +233,7 @@ class TPnet(nn.Module):
         super(TPnet, self).__init__()
 
         self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
-        path = 'D:/PycharmProject/HitNet-main/pretrained_pvt/pvt_v2_b2.pth'
-        # path = '/app/HitNet-main/pretrained_pvt/pvt_v2_b2.pth'
+        path = '../pretrained_pvt/pvt_v2_b2.pth'
         save_model = torch.load(path)
         model_dict = self.backbone.state_dict()
         state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
@@ -296,7 +295,7 @@ class TPnet(nn.Module):
         self.Sigmoid = torch.nn.Sigmoid()
 
         # 合并拓扑通道
-        # self.TPmodule = nn.Conv2d(in_channels=65, out_channels=64, kernel_size=1, stride=1, padding=0)
+        self.TPmodule = nn.Conv2d(in_channels=65, out_channels=64, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         h, w = x.shape[-2:]
