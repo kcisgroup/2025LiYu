@@ -158,7 +158,7 @@ class SAM(nn.Module):
     def __init__(self, ch_in=32, reduction=16):
         super(SAM, self).__init__()
 
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)  # 全局自适应池化
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(ch_in, ch_in // reduction, bias=False),
             nn.ReLU(inplace=True),
@@ -174,21 +174,21 @@ class SAM(nn.Module):
 
     def forward(self, x_h, x_l):
         b, c, _, _ = x_h.size()
-        y_h = self.avg_pool(x_h).view(b, c)  # squeeze操作
+        y_h = self.avg_pool(x_h).view(b, c)
         h_weight = self.fc_wight(y_h)
-        y_h = self.fc(y_h).view(b, c, 1, 1)  # FC获取通道注意力权重，是具有全局信息的
+        y_h = self.fc(y_h).view(b, c, 1, 1)
         x_fusion_h = x_h * y_h.expand_as(x_h)
         x_fusion_h = torch.mul(x_fusion_h, h_weight.view(b, 1, 1, 1))
         ##################----------------------------------
         b, c, _, _ = x_l.size()
-        y_l = self.avg_pool(x_l).view(b, c)  # squeeze操作
+        y_l = self.avg_pool(x_l).view(b, c)
         l_weight = self.fc_wight(y_l)
-        y_l = self.fc(y_l).view(b, c, 1, 1)  # FC获取通道注意力权重，是具有全局信息的
+        y_l = self.fc(y_l).view(b, c, 1, 1)
         x_fusion_l = x_l * y_l.expand_as(x_l)
         x_fusion_l = torch.mul(x_fusion_l, l_weight.view(b, 1, 1, 1))
         #################-------------------------------
         x_fusion = x_fusion_h + x_fusion_l
-        return x_fusion  # 注意力作用每一个通道上
+        return x_fusion
 
 
 ##########################################################################
@@ -284,9 +284,7 @@ class TPnet(nn.Module):
         self.compress_out = BasicConv2d(2 * channel, channel, kernel_size=8, stride=4, padding=2)
 
         self.compress_out2 = BasicConv2d(2 * channel, channel, kernel_size=1)
-        ##kernel_size, stride=1, padding=0, dilation=1
 
-        # 卷积神经网络计算边缘信息
         self.score_dsn1 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1, padding=0)
         self.score_dsn2 = nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1, padding=0)
         self.score_dsn3 = nn.Conv2d(in_channels=320, out_channels=1, kernel_size=1, stride=1, padding=0)
@@ -294,7 +292,6 @@ class TPnet(nn.Module):
         self.new_score_weighting = nn.Conv2d(in_channels=4, out_channels=1, kernel_size=1, stride=1, padding=0)
         self.Sigmoid = torch.nn.Sigmoid()
 
-        # 合并拓扑通道
         self.TPmodule = nn.Conv2d(in_channels=65, out_channels=64, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
@@ -308,7 +305,6 @@ class TPnet(nn.Module):
         x4 = pvt[3]
 
 
-        # 联合学习边缘任务
         score_dsn1 = self.score_dsn1(x1)
         score_dsn2 = self.score_dsn2(x2)
         score_dsn3 = self.score_dsn3(x3)
@@ -323,7 +319,7 @@ class TPnet(nn.Module):
                                                       align_corners=False)
         interm_fuse = self.new_score_weighting(
             torch.cat([tenScoreOne, tenScoreTwo, tenScoreThr, tenScoreFou], 1))
-        interm_fuse = self.Sigmoid(interm_fuse)  # 不加这个会出现sigmoid错误
+        interm_fuse = self.Sigmoid(interm_fuse)
 
         #############-------------------------------------------------
         # CIM
