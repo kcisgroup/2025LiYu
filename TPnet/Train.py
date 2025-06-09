@@ -198,40 +198,6 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    # # 加载预训练参数
-    # pretrained_dict = torch.load("./Dataset/res/0.0274/TPnet.pth")
-    # model_dict = model.state_dict()
-
-    # 过滤掉不匹配的键
-    # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-    # model_dict.update(pretrained_dict)
-    # model.load_state_dict(model_dict)
-
-    # # 加载两个预训练模型的参数
-    # pretrained_dict_1 = torch.load("./model_pth/Net_epoch_best.pth")
-    # pretrained_dict_2 = torch.load("./model_pth/HEDVgg16.pth").get('state_dict')
-    #
-    # # 获取当前模型的参数
-    # model_dict = model.state_dict()
-    #
-    # # 过滤掉不匹配的键，只保留当前模型能用的参数
-    # filtered_dict_1 = {k: v for k, v in pretrained_dict_1.items() if k in model_dict}
-    # filtered_dict_2 = {k: v for k, v in pretrained_dict_2.items() if k in model_dict}
-    #
-    # # 合并参数：处理相同键的情况
-    # for k in filtered_dict_2:
-    #     if k in filtered_dict_1:
-    #         filtered_dict_1[k] = filtered_dict_1[k]
-    #     else:
-    #         # 直接加入 filtered_dict_2 的参数
-    #         filtered_dict_1[k] = filtered_dict_2[k]
-    #
-    # # 更新当前模型的参数
-    # model_dict.update(filtered_dict_1)
-    #
-    # # 加载更新后的参数到模型
-    # model.load_state_dict(model_dict)
-
     if opt.load is not None:
         pretrained_dict = torch.load(opt.load)
         print('!!!!!!Sucefully load model from!!!!!! ', opt.load)
