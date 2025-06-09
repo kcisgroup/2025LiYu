@@ -374,29 +374,14 @@ class TPnet(nn.Module):
 
 if __name__ == '__main__':
     model = TPnet().cuda()
-    path = 'D:/PycharmProject/HitNet-main/model_pth/Net_epoch_best.pth'
-    save_model = torch.load(path)
-    new_state_dict = {}
-    model_dict = model.state_dict()
-    for k, v in save_model.items():
-        new_key = f"backbone.{k}"
-        new_state_dict[new_key] = v
-    model_dict.update(new_state_dict)
-    model.load_state_dict(model_dict, strict=False)
     # 加载图片
-    image_path = 'D:/PycharmProject/HitNet-main/Dataset/TestDataset/Test/Image/camourflage_00985.jpg'  # 替换为实际图片路径
-    image = Image.open(image_path).convert('RGB')  # 确保是RGB格式
-    new_size = (352, 352)  # 宽度800px，高度600px
-    resized_image = image.resize(new_size)
-
+    image_path = '../Dataset/TestDataset/Test/Image/camourflage_00985.jpg'  # 替换为实际图片路径
+    image = Image.open(image_path).convert('RGB')
     transform = transforms.Compose([
-        transforms.Resize((352, 352)),  # 调整尺寸为 352x352
-        transforms.ToTensor(),  # 转换为Tensor，并自动归一化到[0, 1]
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 使用 ImageNet 的标准均值和标准差进行归一化
+        transforms.Resize((352, 352)),
+        transforms.ToTensor(), 
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
     ])
-
-    # 应用转换
-    input = transform(image).unsqueeze(0).cuda()  # 加上 batch 维度并移动到GPU
-    # input = torch.ones((1, 3, 448, 448)).cuda()
+    input = transform(image).unsqueeze(0).cuda()
     prediction1, prediction2, edge = model(input)
     print(prediction1.size(), prediction2.size())
