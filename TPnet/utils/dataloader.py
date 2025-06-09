@@ -97,20 +97,6 @@ class CODataset(data.Dataset):
         self.gts = gts
         self.edges = edges
 
-    # def read_files(self,root_file):
-    #     sec_fold = os.listdir(root_file)
-    #     sec_fold.sort()
-    #     # print(sec_fold)
-    #     image_path = []
-    #     for sec in sec_fold:
-    #         #print('root pth + sec',root_file + sec)
-    #         #tempo_path = [root_file + sec + '/' + f for f in os.listdir(root_file + sec) if f.endswith('.jpg') or f.endswith('.png')]
-    #         tempo_path = [root_file  + '/' + f for f in os.listdir(root_file ) if f.endswith('.jpg') or f.endswith('.png')]
-    #         image_path = image_path + tempo_path
-    #         #print(image_path, len(image_path))
-    #     print(len(image_path))
-    #     return image_path
-
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
             img = Image.open(f)
@@ -173,17 +159,9 @@ class test_dataset:
         image = self.rgb_loader(self.images[self.index])
         image = self.transform(image).unsqueeze(0)
         gt = self.binary_loader(self.gts[self.index])
-        # depth = self.binary_loader(self.depths[self.index])
-        # 将深度图转换为Tensor并调整维度
-        # depth = self.depth_transform(depth).unsqueeze(0)  # 转为Tensor并增加batch维度
-        # 拼接RGB图像和深度图，形成四通道图像
-        # image = torch.cat((image, depth), dim=1)  # 沿着通道维度拼接
         name = self.images[self.index].split('/')[-1]
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
-        # self.index += 1
-        # self.index = self.index % self.size
-        # return image, gt, name
         self.index += 1
         return image, gt, name
 
@@ -229,10 +207,6 @@ class My_test_dataset:
         gt = self.binary_loader(self.gts[self.index])
         # depth = self.binary_loader(self.depths[self.index])
         name = self.images[self.index].split('/')[-1]
-        # 将深度图转换为Tensor并调整维度
-        # depth = self.depth_transform(depth).unsqueeze(0)  # 转为Tensor并增加batch维度
-        # 拼接RGB图像和深度图，形成四通道图像
-        # image = torch.cat((image, depth), dim=1)  # 沿着通道维度拼接
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
         self.index += 1
